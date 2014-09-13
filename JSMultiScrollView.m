@@ -105,7 +105,6 @@
 				s2 = s2.next;
 			}
 			if (!inserted) {
-				NSLog(@"Inserted:\n%@\n%@",s.subview,self.bottomMostView.subview);
 				self.bottomMostView.next = s;
 				s.previous = self.bottomMostView;
 				self.bottomMostView = s;
@@ -114,6 +113,10 @@
 		if ([view isKindOfClass:[UIScrollView class]]) {
 			UIScrollView *sv = (UIScrollView *)view;
 			s.gesture = sv.panGestureRecognizer;
+			if ([sv isKindOfClass:[JSMultiScrollView class]]) {
+				JSMultiScrollView *s = (JSMultiScrollView *)sv;
+				[s.containerScrollView removeGestureRecognizer:sv.panGestureRecognizer];
+			}
 			[sv removeGestureRecognizer:sv.panGestureRecognizer];
 			[sv setScrollsToTop:NO];
 		}
@@ -155,7 +158,6 @@
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-//	NSLog(@"Value Changed!!!!:\n%@\n%@\n\n%@",object,keyPath,change);
 	if ([keyPath isEqualToString:NSStringFromSelector(@selector(superview))]) {
 		if ([object superview]!=self.containerScrollView) {
 			JSScrollSubview *s = self.topMostView;
@@ -182,7 +184,6 @@
 		}
 	}
 	else if ([keyPath isEqualToString:NSStringFromSelector(@selector(frame))]) {
-		
 		JSScrollSubview *s = self.topMostView;
 		while (s) {
 			if (s.subview == object) {
@@ -220,7 +221,6 @@
 }
 
 - (void)reorderView:(JSScrollSubview *)sView change:(float)change {
-	NSLog(@"Reorder View:\n%@",sView.subview);
 	JSScrollSubview *s = sView;
 	while ((s = (change>0?sView.next:sView.previous))) {
 		if (change>0 &&sView.userSetFrame.origin.y>s.userSetFrame.origin.y) {
@@ -261,12 +261,26 @@
 	while (s) {
 		if (s.subview == view) {
 			if (multiScrolling && !s.multiScrolls) {
-				if (((UIScrollView *)s.subview).panGestureRecognizer)
-					s.gesture = ((UIScrollView *)s.subview).panGestureRecognizer;
+				UIScrollView *sv = (UIScrollView *)s.subview;
+				if (sv.panGestureRecognizer) {
+					s.gesture = sv.panGestureRecognizer;
+					
+					if ([sv isKindOfClass:[JSMultiScrollView class]]) {
+						JSMultiScrollView *s = (JSMultiScrollView *)sv;
+						[s.containerScrollView removeGestureRecognizer:sv.panGestureRecognizer];
+					}
+					[sv removeGestureRecognizer:sv.panGestureRecognizer];
+				}
 			}
 			else if (!multiScrolling && s.multiScrolls) {
-				if (s.gesture)
-					[((UIScrollView *)s.subview) addGestureRecognizer:s.gesture];
+				if (s.gesture) {
+					UIScrollView *sv = (UIScrollView *)s.subview;
+					[sv addGestureRecognizer:s.gesture];
+					if ([sv isKindOfClass:[JSMultiScrollView class]]) {
+						JSMultiScrollView *sv2 = (JSMultiScrollView *)sv;
+						[sv2.containerScrollView addGestureRecognizer:sv.panGestureRecognizer];
+					}
+				}
 			}
 
 			[s setMultiScrolls:multiScrolling];
@@ -294,6 +308,12 @@
 	return CGSizeZero;
 }
 
+- (void)setFrame:(CGRect)frame {
+	[super setFrame:frame];
+	[self.containerScrollView setFrame:self.bounds];
+	[self setNeedsLayout];
+}
+
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	[UIView animateKeyframesWithDuration:(!self.drawn?0.0f:0.3) delay:0.0 options:UIViewKeyframeAnimationOptionBeginFromCurrentState animations:^() {
@@ -302,9 +322,6 @@
 		JSScrollSubview *s = self.topMostView;
 		while (s) {
 			UIView *v = s.subview;
-			//	CGRect fr = v.frame;
-			//	fr.origin.y += 15;
-			//	if (fr.origin.y >=500) fr.origin.y = 50.0f;
 			CGRect fr = s.userSetFrame;
 			fr.origin.y+=change;
 			if ([v isKindOfClass:[UIScrollView class]] && s.multiScrolls) {
@@ -322,20 +339,32 @@
 		CGSize cs = self.userSetContentSize;
 		cs.height += change + contentSizeChange;
 		[self setContentSize:cs userSet:NO];
-		NSLog(@"Layout: %@",NSStringFromCGSize(cs));
-		NSLog(@"%@ - %@ - %@ -- %.0f",NSStringFromCGRect(self.frame),NSStringFromCGSize(self.contentSize),NSStringFromCGSize(self.userSetContentSize),change);
 		self.drawn = YES;
 	} completion:^(BOOL finished) {
 		
 	}];
 }
 
+- (void)setContentOffset:(CGPoint)contentOffset {
+	[super setContentOffset:contentOffset];
+	[self setNewOffset:self];
+}
+
+- (void)setContentOffset:(CGPoint)contentOffset animated:(BOOL)animated {
+	[super setContentOffset:contentOffset animated:animated];
+	[UIView animateWithDuration:0.3 animations:^() {
+		[self setNewOffset:self];
+	}];
+}
+
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
-	NSLog(@"ScrollViewDidScroll");
 	if (self.realDelegate && [self.realDelegate respondsToSelector:@selector(scrollViewDidScroll:)])
 		[self.realDelegate scrollViewDidScroll:scrollView];
-	
-	
+	[self setNewOffset:scrollView];
+}
+
+- (void)setNewOffset:(UIScrollView *)scrollView {
+
 	float offset = scrollView.contentOffset.y;
 	float originalOffset = offset;
 	JSScrollSubview *s = self.topMostView;
@@ -351,7 +380,6 @@
 		offset -= diff;
 		s = s.next;
 	}
-	NSLog(@"Scroll offset:%.0f  - %.0f",offset,originalOffset);
 	CGRect fr = self.containerScrollView.frame;
 	fr.origin.y = originalOffset;
 	[self.containerScrollView setFrame:fr];
