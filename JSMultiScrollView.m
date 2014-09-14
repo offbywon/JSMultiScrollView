@@ -144,10 +144,12 @@
 }
 
 - (void)setContentSize:(CGSize)contentSize userSet:(BOOL)userSet {
-	[super setContentSize:contentSize];
 	if (userSet) {
 		self.userSetContentSize = contentSize;
 		[self setNeedsLayout];
+	}
+	else {
+		[super setContentSize:contentSize];
 	}
 }
 
@@ -189,9 +191,14 @@
 			if (s.subview == object) {
 				if (s.shouldSetFrame==0) {
 					CGRect rect = [[change valueForKey:@"new"] CGRectValue];
-					float change = rect.origin.y - s.userSetFrame.origin.y;
+					float change2 = rect.origin.y - s.userSetFrame.origin.y;
 					s.userSetFrame = rect;
-					[self reorderView:s change:change];
+					[self reorderView:s change:change2];
+					if ([change valueForKey:@"old"]) {
+						CGRect old = [[change valueForKey:@"old"] CGRectValue];
+						s.shouldSetFrame++;
+						[s.subview setFrame:old];
+					}
 					[self setNeedsLayout];
 				}
 				else {
