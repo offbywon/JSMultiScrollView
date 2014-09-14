@@ -224,18 +224,24 @@
 	JSScrollSubview *s = sView;
 	while ((s = (change>0?sView.next:sView.previous))) {
 		if (change>0 &&sView.userSetFrame.origin.y>s.userSetFrame.origin.y) {
+			s.next.previous = sView;
+			sView.previous.next = s;
 			s.previous = sView.previous;
 			sView.next = s.next;
 			s.next = sView;
 			sView.previous = s;
 			if (s==self.bottomMostView) self.bottomMostView = sView;
+			if (sView == self.topMostView) self.topMostView = s;
 		}
 		else if (change < 0 && sView.userSetFrame.origin.y<s.userSetFrame.origin.y) {
+			s.previous.next = sView;
+			sView.next.previous = s;
 			s.next = sView.next;
 			sView.previous = s.previous;
 			s.previous = sView;
 			sView.next = s;
 			if (s==self.topMostView) self.topMostView = sView;
+			if (sView == self.bottomMostView) self.bottomMostView = s;
 		}
 		else {
 			break;
@@ -465,6 +471,27 @@
 		} @catch (NSException * __unused exception) {}
 		
 	}
+}
+
+
+
+
+- (NSString *)printFromTop {
+	JSScrollSubview *s = self.topMostView;
+	NSString *str = [NSString stringWithFormat:@"%@",s.subview];
+	while ((s = s.next)) {
+		str = [str stringByAppendingString:[NSString stringWithFormat:@"\n%@",s.subview]];
+	}
+	return str;
+}
+
+- (NSString *)printFromBottom {
+	JSScrollSubview *s = self.bottomMostView;
+	NSString *str = [NSString stringWithFormat:@"%@",s.subview];
+	while ((s = s.next)) {
+		str = [str stringByAppendingString:[NSString stringWithFormat:@"\n%@",s.subview]];
+	}
+	return str;
 }
 
 
