@@ -52,7 +52,8 @@
 @property (nonatomic, strong) JSScrollSubview *bottomMostView;
 @property (nonatomic) CGSize userSetContentSize;
 @property (nonatomic) BOOL drawn;
-
+@property (nonatomic) BOOL setFakeOffset;
+@property (nonatomic) CGPoint fakeOffset;
 @end
 
 @implementation JSMultiScrollView
@@ -332,6 +333,7 @@
 	[UIView animateKeyframesWithDuration:(!self.drawn?0.0f:0.3) delay:0.0 options:UIViewKeyframeAnimationOptionBeginFromCurrentState animations:^() {
 		float change = 0.0f;
 		float contentSizeChange = 0.0f;
+		float fakeOffsetChange = 0.0f;
 		JSScrollSubview *s = self.topMostView;
 		while (s) {
 			UIView *v = s.subview;
@@ -342,6 +344,7 @@
 				fr.size.height = MIN(self.frame.size.height,sv.contentSize.height);//s.userSetContentSize.height);//sv.contentSize.height);
 				change += fr.size.height - s.userSetFrame.size.height;
 				contentSizeChange += sv.contentSize.height - fr.size.height;
+				if (s.userSetFrame.origin.y + s.userSetFrame.size.height < self.fakeOffset.y) fakeOffsetChange = change + contentSizeChange;
 			}
 			if (!CGRectEqualToRect(fr, v.frame)) {
 				s.shouldSetFrame++;
@@ -352,6 +355,10 @@
 		CGSize cs = self.userSetContentSize;
 		cs.height += change + contentSizeChange;
 		[self setContentSize:cs userSet:NO];
+		if (self.setFakeOffset) {
+			self.setFakeOffset = NO;
+			[self setContentOffset:CGPointMake(self.fakeOffset.x, self.fakeOffset.y + fakeOffsetChange)];
+		}
 		self.drawn = YES;
 	} completion:^(BOOL finished) {
 		
@@ -368,6 +375,11 @@
 	[UIView animateWithDuration:0.3 animations:^() {
 		[self setNewOffset:self];
 	}];
+}
+
+- (void)setContentOffsetFake:(CGPoint)contentOffset {
+	self.setFakeOffset = YES;
+	self.fakeOffset = contentOffset;
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
