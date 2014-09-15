@@ -78,60 +78,110 @@
 
 - (void)addSubview:(UIView *)view {
 	NSString *sourceString = [[NSThread callStackSymbols] objectAtIndex:1];
-	// Example: 1   UIKit                               0x00540c89 -[UIApplication _callInitializationDelegatesForURL:payload:suspended:] + 1163
 	NSCharacterSet *separatorSet = [NSCharacterSet characterSetWithCharactersInString:@" -[]+?.,"];
 	NSMutableArray *array = [NSMutableArray arrayWithArray:[sourceString  componentsSeparatedByCharactersInSet:separatorSet]];
 	[array removeObject:@""];
 	if (![[array objectAtIndex:3] isEqualToString:@"<redacted>"]) {
 		[self.containerScrollView addSubview:view];
-		JSScrollSubview *s = [[JSScrollSubview alloc] initWithSubview:view];
-		if (!self.topMostView) {
-				self.topMostView = s;
-			if (!self.bottomMostView)
-				self.bottomMostView = self.topMostView;
-		}
-		else {
-			JSScrollSubview *s2 = self.topMostView;
-			BOOL inserted = NO;
-			while (s2) {
-				if (view.frame.origin.y < s2.subview.frame.origin.y) {
-					s2.previous.next = s;
-					s.previous = s2.previous;
-					s2.previous = s;
-					s.next = s2;
-					if (s2==self.topMostView) self.topMostView = s;
-					inserted = YES;
-					break;
-				}
-				s2 = s2.next;
-			}
-			if (!inserted) {
-				self.bottomMostView.next = s;
-				s.previous = self.bottomMostView;
-				self.bottomMostView = s;
-			}
-		}
-		if ([view isKindOfClass:[UIScrollView class]]) {
-			UIScrollView *sv = (UIScrollView *)view;
-			s.gesture = sv.panGestureRecognizer;
-			if ([sv isKindOfClass:[JSMultiScrollView class]]) {
-				JSMultiScrollView *s = (JSMultiScrollView *)sv;
-				[s.containerScrollView removeGestureRecognizer:sv.panGestureRecognizer];
-			}
-			[sv removeGestureRecognizer:sv.panGestureRecognizer];
-			[sv setScrollsToTop:NO];
-		}
-		if ([view respondsToSelector:@selector(frame)])
-			[view addObserver:self forKeyPath:NSStringFromSelector(@selector(frame)) options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
-		if ([view respondsToSelector:@selector(contentSize)])
-			[view addObserver:self forKeyPath:NSStringFromSelector(@selector(contentSize)) options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
-		if ([view respondsToSelector:@selector(superview)])
-			[view addObserver:self forKeyPath:NSStringFromSelector(@selector(superview)) options:0 context:NULL];
+		[self setMultiScrollValuesForView:view];
 	}
 	else {
 		[super addSubview:view];
 	}
 	[self setNeedsLayout];
+}
+
+- (void)insertSubview:(UIView *)view aboveSubview:(UIView *)siblingSubview {
+	NSString *sourceString = [[NSThread callStackSymbols] objectAtIndex:1];
+	NSCharacterSet *separatorSet = [NSCharacterSet characterSetWithCharactersInString:@" -[]+?.,"];
+	NSMutableArray *array = [NSMutableArray arrayWithArray:[sourceString  componentsSeparatedByCharactersInSet:separatorSet]];
+	[array removeObject:@""];
+	if (![[array objectAtIndex:3] isEqualToString:@"<redacted>"]) {
+		[self.containerScrollView insertSubview:view aboveSubview:siblingSubview];
+		[self setMultiScrollValuesForView:view];
+	}
+	else {
+		[super insertSubview:view aboveSubview:siblingSubview];
+	}
+	[self setNeedsLayout];
+}
+
+
+- (void)insertSubview:(UIView *)view atIndex:(NSInteger)index {
+	NSString *sourceString = [[NSThread callStackSymbols] objectAtIndex:1];
+	NSCharacterSet *separatorSet = [NSCharacterSet characterSetWithCharactersInString:@" -[]+?.,"];
+	NSMutableArray *array = [NSMutableArray arrayWithArray:[sourceString  componentsSeparatedByCharactersInSet:separatorSet]];
+	[array removeObject:@""];
+	if (![[array objectAtIndex:3] isEqualToString:@"<redacted>"]) {
+		[self.containerScrollView insertSubview:view atIndex:index];
+		[self setMultiScrollValuesForView:view];
+	}
+	else {
+		[super insertSubview:view atIndex:index];
+	}
+	[self setNeedsLayout];
+}
+
+- (void)insertSubview:(UIView *)view belowSubview:(UIView *)siblingSubview {
+	NSString *sourceString = [[NSThread callStackSymbols] objectAtIndex:1];
+	NSCharacterSet *separatorSet = [NSCharacterSet characterSetWithCharactersInString:@" -[]+?.,"];
+	NSMutableArray *array = [NSMutableArray arrayWithArray:[sourceString  componentsSeparatedByCharactersInSet:separatorSet]];
+	[array removeObject:@""];
+	if (![[array objectAtIndex:3] isEqualToString:@"<redacted>"]) {
+		[self.containerScrollView insertSubview:view belowSubview:siblingSubview];
+		[self setMultiScrollValuesForView:view];
+	}
+	else {
+		[super insertSubview:view belowSubview:siblingSubview];
+	}
+	[self setNeedsLayout];
+}
+
+
+- (void)setMultiScrollValuesForView:(UIView *)view {
+	JSScrollSubview *s = [[JSScrollSubview alloc] initWithSubview:view];
+	if (!self.topMostView) {
+		self.topMostView = s;
+		if (!self.bottomMostView)
+			self.bottomMostView = self.topMostView;
+	}
+	else {
+		JSScrollSubview *s2 = self.topMostView;
+		BOOL inserted = NO;
+		while (s2) {
+			if (view.frame.origin.y < s2.subview.frame.origin.y) {
+				s2.previous.next = s;
+				s.previous = s2.previous;
+				s2.previous = s;
+				s.next = s2;
+				if (s2==self.topMostView) self.topMostView = s;
+				inserted = YES;
+				break;
+			}
+			s2 = s2.next;
+		}
+		if (!inserted) {
+			self.bottomMostView.next = s;
+			s.previous = self.bottomMostView;
+			self.bottomMostView = s;
+		}
+	}
+	if ([view isKindOfClass:[UIScrollView class]]) {
+		UIScrollView *sv = (UIScrollView *)view;
+		s.gesture = sv.panGestureRecognizer;
+		if ([sv isKindOfClass:[JSMultiScrollView class]]) {
+			JSMultiScrollView *s = (JSMultiScrollView *)sv;
+			[s.containerScrollView removeGestureRecognizer:sv.panGestureRecognizer];
+		}
+		[sv removeGestureRecognizer:sv.panGestureRecognizer];
+		[sv setScrollsToTop:NO];
+	}
+	if ([view respondsToSelector:@selector(frame)])
+		[view addObserver:self forKeyPath:NSStringFromSelector(@selector(frame)) options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
+	if ([view respondsToSelector:@selector(contentSize)])
+		[view addObserver:self forKeyPath:NSStringFromSelector(@selector(contentSize)) options:NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld context:NULL];
+	if ([view respondsToSelector:@selector(superview)])
+		[view addObserver:self forKeyPath:NSStringFromSelector(@selector(superview)) options:0 context:NULL];
 }
 
 - (void)setDelegate:(id<UIScrollViewDelegate>)delegate {
@@ -365,6 +415,31 @@
 	}];
 }
 
+- (CGPoint)getFakeContentOffset {
+	float change = 0.0f;
+	float contentSizeChange = 0.0f;
+	float fakeOffsetChange = 0.0f;
+	float realOffsetY = self.contentOffset.y;
+	JSScrollSubview *s = self.topMostView;
+	while (s) {
+		UIView *v = s.subview;
+		CGRect fr = s.userSetFrame;
+		fr.origin.y+=change;
+		if ([v isKindOfClass:[UIScrollView class]] && s.multiScrolls) {
+			UIScrollView *sv = (UIScrollView *)v;
+			fr.size.height = MIN(self.frame.size.height,sv.contentSize.height);//s.userSetContentSize.height);//sv.contentSize.height);
+			change += fr.size.height - s.userSetFrame.size.height;
+			contentSizeChange += sv.contentSize.height - fr.size.height;
+			if (fr.origin.y + fr.size.height < realOffsetY) fakeOffsetChange = change + contentSizeChange;
+			//		if (s.userSetFrame.origin.y + s.userSetFrame.size.height < self.fakeOffset.y) fakeOffsetChange = change + contentSizeChange;
+		}
+		s = s.next;
+	}
+	CGPoint off = self.contentOffset;
+	off.y -= fakeOffsetChange;
+	return off;
+}
+
 - (void)setContentOffset:(CGPoint)contentOffset {
 	[super setContentOffset:contentOffset];
 	[self setNewOffset:self];
@@ -394,7 +469,6 @@
 	float originalOffset = offset;
 	JSScrollSubview *s = self.topMostView;
 	while (s) {
-//		if (s.subview.frame.origin.y >= offset) break;
 		if (![s.subview isKindOfClass:[UIScrollView class]] || !s.multiScrolls) {
 			s = s.next;
 			continue;
@@ -491,8 +565,6 @@
 		
 	}
 }
-
-
 
 
 - (NSString *)printFromTop {

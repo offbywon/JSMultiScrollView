@@ -16,6 +16,7 @@
 - (void)setMultiScrolling:(BOOL)multiScrolling forView:(UIView *)view;
 - (void)addSubview:(UIView *)view  multiScrolling:(BOOL)multiScrolling;
 
+- (CGPoint)getFakeContentOffset;
 - (void)setContentOffsetFake:(CGPoint)contentOffset;
 
 @end
